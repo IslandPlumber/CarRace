@@ -52,3 +52,19 @@ This update copied static assets and hashed JavaScript/CSS into the existing Car
 All 85 automated checks passed, as did the two-player local browser regression. Live HTTPS model checks passed all seven showroom liveries, one shared model download, selection of a showroom car for the race, the new models in the Chase view, and the phone showroom without overflow or browser errors. The served GLB matched SHA256 `8b3d1604116dc2060ed510e996a459276b2d57e763036dd2af40c702a399ab80`.
 
 CarRace PID remained `3488171` with zero automatic restarts. HorseRace and Laravel service PIDs remained unchanged. Protected environment/configuration hashes matched, Laravel pages returned their previous expected status codes, and both game health endpoints returned 200. Model verification evidence is in ignored `review/models/`.
+
+## Larger banked speedway — October 27, 2026
+
+**Application revision:** `8647f90e4914f289f6fb5f5a29b4dbb104ba5c15`. **Private administrator backup:** `/var/backups/carrace-speedway-20261027-eys8Ni`.
+
+New practice and club races use a 2,448.14 m (1.52-mile) oval, approximately six times the original circuit length, with 24° turns and 4° straights. Banking transitions ease over 110 m. The track includes a flat apron, double yellow lines, pit road, expanded grandstands, walls and catch fencing. Cars follow a shared 3D road frame for elevation, banking and transition pitch; cameras adapt to the larger venue and road height.
+
+The additive `race_tracks` table freezes the new course at betting open. Old pending races without a stored track retain the legacy circuit, and existing in-flight definitions retain their original course when abilities are applied after restart. Tests covered both an existing in-flight race and an old database still accepting bets. No existing account, ticket or race record was rewritten by the schema addition.
+
+The administrator updater made and integrity-checked an online SQLite backup, preflighted a private database copy on loopback port 8772, switched the application release and restarted only CarRace. The preflight listener was closed. CarRace PID changed from `3488171` to `3500334`, with zero automatic restarts. Nginx, both PHP services, MySQL, cron and HorseRace retained their previous PIDs and active states. Laravel environment and hosting configuration hashes matched their prior values. The updater also checked schedule hashes. No hosting reload or changes were needed.
+
+The regression suite passed, along with six focused speedway checks and a two-player browser test against the new track. Live HTTPS visual verification observed 24° banking during real practice playback, working Chase/Trackside cameras and a phone layout without overflow or browser errors.
+
+Live multiplayer verification completed at **2026-10-27 13:26:57 UTC**. Both players shared the frozen speedway course, bought/saved an engine upgrade, placed Win/Show bets, and each used their paid ability once. The Show ticket paid 75 coins on a 50-coin stake for second place. Finish prizes, points, final balances, reload and saved bet history matched expectations. Test players left the private room afterward. No browser errors or requests outside `/carrace/` occurred.
+
+Verified race: `540704cb-6371-479c-b119-d17acefadd9e`. Local evidence is in ignored `review/speedway/` and `review/live/`. Refresh existing browser tabs to load the larger course renderer.
