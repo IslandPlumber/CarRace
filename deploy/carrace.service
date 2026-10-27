@@ -1,0 +1,39 @@
+[Unit]
+Description=CarRace stock-car racing club
+After=network.target
+
+[Service]
+Type=simple
+User=carrace
+Group=carrace
+WorkingDirectory=/home/carrace/app
+Environment=HOST=127.0.0.1
+Environment=PORT=8771
+Environment=GAME_DB=/home/carrace/data/game.sqlite
+Environment=TRUST_PROXY=1
+Environment=NODE_OPTIONS=--max-old-space-size=80
+ExecStart=/home/carrace/runtime/bin/node /home/carrace/app/server/start.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+InaccessiblePaths=/var/www /var/lib/mysql /root -/home/john -/home/horserace
+ReadWritePaths=/home/carrace/data
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryHigh=96M
+MemoryMax=144M
+TasksMax=32
+CPUWeight=20
+CPUQuota=30%
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

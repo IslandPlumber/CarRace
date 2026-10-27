@@ -1,0 +1,11 @@
+import {chromium} from '@playwright/test';
+import {mkdir,writeFile} from 'node:fs/promises';
+await mkdir('review',{recursive:true});
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1180},deviceScaleFactor:1});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+await page.goto('http://127.0.0.1:8771/',{waitUntil:'networkidle'});await page.waitForTimeout(1800);await page.screenshot({path:'review/desktop.png',fullPage:true});
+await page.getByRole('button',{name:'Practice race'}).click();await page.waitForTimeout(9500);await page.screenshot({path:'review/racing.png',fullPage:true});
+await page.getByRole('button',{name:'Chase',exact:true}).click();await page.waitForTimeout(1800);await page.screenshot({path:'review/chase.png',fullPage:true});
+console.log(JSON.stringify({errors,title:await page.title(),overflow:await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)},null,2));
+await browser.close();
