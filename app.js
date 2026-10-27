@@ -1,5 +1,7 @@
 import {SpeedwayScene} from './scene.js';
 import {CarShowroom} from './showroom.js';
+import {LivePlayback,finishTimes} from './playback.js';
+const livePlayback=new LivePlayback();
 import {RACERS,racerById,carArt} from './roster.js';
 import {trackPoint,makeSpeedway} from './track.js';
 const DEFAULT_TRACK=makeSpeedway();
@@ -14,7 +16,7 @@ if(!RACERS.some(r=>r.id===selected))selected='ironhart';
 let showroom=null,previewIndex=RACERS.findIndex(r=>r.id===selected);
 let scene=null;try{scene=new SpeedwayScene($('#track'));$('#loading').hidden=true;}catch(e){$('#loading').textContent='3D graphics could not start. Enable WebGL in your browser, then reload.';console.error(e);}
 function toast(text){$('#toast').textContent=text;$('#toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('show'),4200);}
-async function api(endpoint,body){const res=await fetch(new URL(`api${endpoint}`,location.href),{method:body===undefined?'GET':'POST',headers:{...(body!==undefined?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});let data;try{data=await res.json();}catch{throw Error('The race club is not connected yet. Practice racing is available.');}if(!res.ok){if(res.status===401){token=null;me=null;room=null;localStorage.removeItem(tokenKey);renderAccount();}throw Error(data.error||'Could not connect to the race club.');}if(data.serverTime)serverOffset=data.serverTime-Date.now();return data;}
+async function api(endpoint,body){const sent=performance.now();const res=await fetch(new URL(`api${endpoint}`,location.href),{method:body===undefined?'GET':'POST',headers:{...(body!==undefined?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});let data;try{data=await res.json();}catch{throw Error('The race club is not connected yet. Practice racing is available.');}if(!res.ok){if(res.status===401){token=null;me=null;room=null;localStorage.removeItem(tokenKey);renderAccount();}throw Object.assign(Error(data.error||'Could not connect to the race club.'),{status:res.status});}if(data.serverTime)serverOffset=data.serverTime+(performance.now()-sent)/2-Date.now();return data;}
 async function act(fn){if(busy)return;busy=true;try{await fn();}catch(e){toast(e.message);}finally{busy=false;}}
 function openAuth(mode='register'){authMode=mode;$('#auth-title').textContent=mode==='register'?'Join the race club.':'Welcome back, racer.';$('#auth-subtitle').textContent=mode==='register'?'Start with 1,000 free coins. Save your car, upgrades, and wins.':'Your car, coins, and upgrades are right where you left them.';$('#auth-submit').textContent=mode==='register'?'Create account →':'Sign in →';$('#auth-toggle').textContent=mode==='register'?'Already a member? Sign in':'New to the club? Create an account';$('#password').autocomplete=mode==='register'?'new-password':'current-password';$('#auth-error').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();}
 function showTab(next){tab=next;document.querySelectorAll('.nav-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.tab-panel').forEach(p=>p.hidden=p.id!==`panel-${tab}`);if(tab==='garage')renderGarage();if(tab==='club')renderClub();if(tab==='history')loadHistory();}
@@ -26,19 +28,19 @@ function renderRacers(){
 function gridState(track=DEFAULT_TRACK){const t=track;return {runners:RACERS.map((r,i)=>({id:r.id,lane:i,rank:i+1,distance:0,finished:false,...trackPoint(t,0,(i-3)*t.laneWidth)})),standings:RACERS.map(r=>r.id)};}
 function distanceAt(points,time){let lo=0,hi=points.length-1;if(time>=points[hi].time)return points[hi].distance;while(lo+1<hi){const m=(lo+hi)>>1;if(points[m].time<=time)lo=m;else hi=m;}const a=points[lo],b=points[hi];return a.distance+(b.distance-a.distance)*Math.max(0,Math.min(1,(time-a.time)/(b.time-a.time||1)));}
 function sample(def,time){
- const t=Math.max(0,Math.min(def.live?def.availableTime:def.duration,time));
- const runners=def.cast.map(r=>{const distance=distanceAt(r.progress,t);let finish=Infinity;for(let i=1;i<r.progress.length;i++){const a=r.progress[i-1],b=r.progress[i];if(a.distance<def.track.length&&b.distance>=def.track.length){finish=a.time+(def.track.length-a.distance)*(b.time-a.time)/(b.distance-a.distance);break;}}return {id:r.id,lane:r.lane,distance,finished:t>=finish,finishTime:finish,...trackPoint(def.track,Math.min(distance,def.track.length+8),(r.lane-(def.cast.length-1)/2)*def.track.laneWidth)};});
+ const t=Math.max(0,Math.min(def.live?def.availableTime:def.duration,time)),finishes=finishTimes(def);
+ const runners=def.cast.map(r=>{const distance=distanceAt(r.progress,t);const finish=finishes.get(r.id);return {id:r.id,lane:r.lane,distance,finished:t>=finish,finishTime:finish,...trackPoint(def.track,Math.min(distance,def.track.length+8),(r.lane-(def.cast.length-1)/2)*def.track.laneWidth)};});
  const ordered=[...runners].sort((a,b)=>a.finished&&b.finished?a.finishTime-b.finishTime:a.finished!==b.finished?a.finished?-1:1:b.distance-a.distance||a.lane-b.lane);ordered.forEach((r,i)=>r.rank=i+1);return {runners,standings:ordered.map(r=>r.id)};
 }
 function currentView(){
- const live=room?.race;if(live&&live.phase!=='results'){practice=null;const def=live.definition;return {def,time:Math.max(0,(Date.now()+serverOffset-live.starts)/1000-1.05),phase:live.phase,live:true,race:live};}
+ const live=room?.race;if(live&&(live.phase!=='results'||!practice)){practice=null;const def=live.definition,time=livePlayback.read(live,Date.now()+serverOffset,performance.now()),phase=live.phase==='results'&&def&&time<def.duration?'racing':live.phase;return {def,time,phase,live:true,race:live};}
  if(practice){const time=(performance.now()-practice.started)/1000,done=time>=raceFinishedAt(practice.def);return {def:practice.def,time,phase:done?'results':'racing',live:false,race:practice};}
  if(live?.definition)return {def:live.definition,time:live.definition.duration,phase:live.phase,live:true,race:live};
  return {def:null,time:0,phase:'waiting',live:false,race:null};
 }
-function startPractice(){if(room?.race&&room.race.phase!=='results')return toast('Finish your club race before starting practice.');const seed=crypto.randomUUID(),entrants=RACERS.map(r=>({car:r.id,...(r.id===selected?{userId:'practice-driver'}:{})}));practice={seed,entrants,def:simulateLiveRace(seed,{entrants,duration:64,specials:true,track:DEFAULT_TRACK}),activations:[],started:performance.now()};showTab('circuit');unlockSound();toast('Exhibition race. Try your signature move after the starting lights!');}
+function startPractice(){if(room?.race&&room.race.phase!=='results')return toast('Finish your club race before starting practice.');livePlayback.reset();const seed=crypto.randomUUID(),entrants=RACERS.map(r=>({car:r.id,...(r.id===selected?{userId:'practice-driver'}:{})}));practice={seed,entrants,def:simulateLiveRace(seed,{entrants,duration:64,specials:true,track:DEFAULT_TRACK}),activations:[],started:performance.now()};showTab('circuit');unlockSound();toast('Exhibition race. Try your signature move after the starting lights!');}
 async function chooseDriver(id){const v=currentView();if(v.phase==='racing'||v.phase==='betting')return toast('Choose your next driver after the checkered flag.');if(me){const data=await api('/car',{car:id});me=data.user;room=room? (await api(`/rooms/${room.code}`)).room:null;renderAccount();}selected=id;localStorage.setItem(selectedKey,selected);practice=null;renderRacers();}
-async function fireAbility(){const v=currentView();if(v.live){if(!room?.race?.power?.available)return;const data=await api(`/rooms/${room.code}/power`,{raceId:room.race.id,requestId:crypto.randomUUID(),policyVersion:SPECIAL_POWER_POLICY.version});room=data.room;me=data.user;renderAccount();renderClub();}
+async function fireAbility(){const v=currentView();if(v.live){if(!room?.race?.power?.available)return;const data=await api(`/rooms/${room.code}/power`,{raceId:room.race.id,requestId:crypto.randomUUID(),policyVersion:SPECIAL_POWER_POLICY.version});acceptRoom(data.room);me=data.user;renderAccount();renderClub();}
  else if(practice&&!practice.activations.length&&v.phase==='racing'&&v.time>=practice.def.startDelay){const time=nextLiveActivationTime(practice.def,v.time);practice.activations.push({actor:selected,time});practice.def=simulateLiveRace(practice.seed,{entrants:practice.entrants,duration:64,specials:true,activations:practice.activations,track:practice.def.track});toast(`⚡ ${POWERS[selected].name}!`);}}
 function renderHud(view,state,now){
  if(now-lastHud<90)return;lastHud=now;const {def,time,phase,live,race}=view,r=racerById(selected),ability=$('#ability'),clock=$('#race-clock');
@@ -70,7 +72,20 @@ function renderClub(){
  // Preserve form selections and focus while live room snapshots update.
  if(markup!==lastClubMarkup){const forms={};el.querySelectorAll('form').forEach(f=>forms[f.id]=Object.fromEntries(new FormData(f)));const focused=document.activeElement?.name,formId=document.activeElement?.form?.id;el.innerHTML=markup;for(const [id,values]of Object.entries(forms))for(const [name,value]of Object.entries(values)){const input=el.querySelector(`#${id} [name="${name}"]`);if(input)input.value=value;}if(formId&&focused)el.querySelector(`#${formId} [name="${focused}"]`)?.focus();lastClubMarkup=markup;}
 }
-async function sync(){if(!token||polling)return;polling=true;try{const data=await api('/me');me=data.user;if(me.car!==selected){selected=me.car;localStorage.setItem(selectedKey,selected);renderRacers();}room=data.roomCode?(await api(`/rooms/${data.roomCode}`)).room:null;rooms=(await api('/rooms')).rooms;renderAccount();if(tab==='club')renderClub();}catch(e){if(!token){renderClub();toast('Your session expired. Sign in to return to the club.');}}finally{polling=false;}}
+function acceptRoom(next){
+ const before=room?.race,after=next?.race;
+ if(room?.code===next?.code&&before&&after){
+  if(after.starts<before.starts)return;
+  if(before.id===after.id&&((before.definition?.availableTime??0)>(after.definition?.availableTime??0)||before.phase==='results'&&after.phase!=='results'))return;
+ }
+ room=next;
+}
+async function sync(){if(!token||polling)return;polling=true;try{
+ const code=room?.code,[data]=await Promise.all([api('/me'),code?api(`/rooms/${code}`).catch(error=>{if(error.status!==403&&error.status!==404)throw error;}).then(result=>{if(result&&token&&room?.code===code)acceptRoom(result.room);}):Promise.resolve()]);
+ me=data.user;if(me.car!==selected){selected=me.car;localStorage.setItem(selectedKey,selected);renderRacers();}
+ if(data.roomCode!==code)acceptRoom(data.roomCode?(await api(`/rooms/${data.roomCode}`)).room:null);
+ renderAccount();if(tab==='club'||!rooms.length){rooms=(await api('/rooms')).rooms;if(tab==='club')renderClub();}
+ }catch(e){if(!token){renderClub();toast('Your session expired. Sign in to return to the club.');}}finally{polling=false;}}
 async function loadHistory(){if(!me){$('#history-content').innerHTML='<div class="empty-state"><h3>No bet slips yet.</h3><p>Sign in and place a club bet to save your first ticket.</p><button class="button primary" data-action="auth">Join the club →</button></div>';return;}try{history=(await api('/history?betsOnly=1')).history;$('#history-content').innerHTML=history.length?`<div class="history-grid">${history.map(h=>`<article class="history-card"><span class="eyebrow">ROOM ${esc(h.roomCode)} · ROUND ${h.number}</span><h3>${h.phase==='results'?'🏁 Completed race':'Race in progress'}</h3>${h.bets.map(b=>`<p>${esc(b.kind.toUpperCase())} · ${esc(racerById(b.car).name)}<br>Stake ${b.stake} ◈ · ${b.payout===null?'Pending':b.payout?`Return ${b.payout} ◈`:'Lost'}</p>`).join('')}<p>Race net: <strong>${signed(h.netCoins)} ◈</strong> · Prize: ${h.prize} ◈</p></article>`).join('')}</div>`:'<div class="empty-state"><h3>No bets yet.</h3><p>Place a bet in the club to save your first ticket.<br>Races without a bet stay out of this list.</p></div>';}catch(e){toast(e.message);}}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 document.querySelectorAll('[data-camera]').forEach(b=>b.onclick=()=>{if(scene)scene.cameraMode=b.dataset.camera;document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===b));});
@@ -91,4 +106,4 @@ function openShowroom(){if(!showroom){try{showroom=new CarShowroom($('#showroom-
 $('#showroom-prev').onclick=()=>previewCar(previewIndex-1);$('#showroom-next').onclick=()=>previewCar(previewIndex+1);$('#showroom-select').onclick=()=>act(async()=>{await chooseDriver(RACERS[previewIndex].id);previewCar(previewIndex);});
 scene?.ready.catch(()=>toast('Detailed car models could not load. Reload to try again.'));
 renderRacers();renderAccount();renderClub();requestAnimationFrame(animate);if(token)sync();
-setInterval(()=>{if(!document.hidden)sync();},850);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync();});
+setInterval(()=>{if(!document.hidden)sync();},850);document.addEventListener('visibilitychange',()=>{if(!document.hidden){livePlayback.reset();sync();}});

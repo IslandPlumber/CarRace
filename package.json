@@ -10,9 +10,10 @@
     "dev": "node server/start.js",
     "start": "node server/start.js",
     "build": "node build.mjs",
-    "test": "node --test race-core.test.js track.test.js server/game.test.js server/betting.test.js server/live-simulation.test.js server/live-powers.test.js server/special-powers.test.js server/main-room.test.js server/presence.test.js server/workshop.test.js tests/car-race.test.js tests/model-asset.test.js tests/speedway.test.js",
+    "test": "node --test race-core.test.js track.test.js server/game.test.js server/betting.test.js server/live-simulation.test.js server/live-powers.test.js server/special-powers.test.js server/main-room.test.js server/presence.test.js server/workshop.test.js tests/car-race.test.js tests/model-asset.test.js tests/speedway.test.js tests/playback.test.js",
     "test:browser": "node tests/browser.mjs",
-    "test:models": "node tests/models.mjs"
+    "test:models": "node tests/models.mjs",
+    "test:playback": "node tests/playback-browser.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

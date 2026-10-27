@@ -52,6 +52,8 @@ Browser tests use installed Chrome and exercise a prefix-rejecting proxy at `/ca
 
 `node tests/speedway-browser.mjs` checks the enlarged course and a 24° corner during practice, including Chase, Trackside, and mobile views. `tests/speedway.test.js` covers continuous road frames, banking validation, causal race inputs, and legacy/pending race compatibility.
 
+`npm run test:playback` sends deliberately uneven, delayed room/account responses to the real renderer and checks continuous movement, bounded playback speed, confirmed-history limits and a paid ability while polling overlaps. Live playback buffers confirmed movement, adjusts its pace without seeking, ignores older snapshots and plays through the final buffered finish. Static venue structures share drawing batches, and finish crossings are cached per snapshot.
+
 ## Deployment
 
 The administrator installer in `deploy/install-carrace.sh` is prepared for the inspected Ubuntu/Nginx host. It refuses to proceed if the existing hosting file or Laravel environment hash has changed, if `/carrace/` is already configured, or if port 8771 is occupied. This is an **initial-install script**, not an update script.

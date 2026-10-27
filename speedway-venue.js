@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {trackPoint,circuitLength} from './track.js';
 import {RACERS} from './roster.js';
 const material=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.85,...extra});
@@ -12,9 +13,26 @@ function ribbon(parent,track,inner,outer,mat,height=.03,shape=null){
  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();const mesh=new T.Mesh(g,mat);mesh.receiveShadow=true;parent.add(mesh);return mesh;
 }
 function instances(parent,geometry,mat,placements){const mesh=new T.InstancedMesh(geometry,mat,placements.length),dummy=new T.Object3D();placements.forEach((p,i)=>{dummy.position.set(...p.position);dummy.rotation.set(...(p.rotation??[0,0,0]));dummy.scale.set(...(p.scale??[1,1,1]));dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);if(p.color)mesh.setColorAt(i,new T.Color(p.color));});mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;}
+// Bake stationary structures into shared draws, preserving every seat and shadow.
+function batchStructures(venue){
+ const batches=new Map();venue.updateMatrixWorld(true);
+ for(const mesh of venue.children){
+  if(!mesh.isMesh||mesh.isInstancedMesh||Array.isArray(mesh.material)||mesh.material.map)continue;
+  const key=`${mesh.material.uuid}/${mesh.castShadow}/${mesh.receiveShadow}`;
+  if(!batches.has(key))batches.set(key,[]);batches.get(key).push(mesh);
+ }
+ for(const meshes of batches.values()){
+  if(meshes.length<2)continue;
+  const parts=meshes.map(mesh=>mesh.geometry.clone().applyMatrix4(mesh.matrix));
+  const geometry=mergeGeometries(parts);for(const part of parts)part.dispose();
+  if(!geometry)continue;
+  const first=meshes[0],merged=new T.Mesh(geometry,first.material);merged.castShadow=first.castShadow;merged.receiveShadow=first.receiveShadow;
+  for(const mesh of meshes){venue.remove(mesh);mesh.geometry.dispose();}venue.add(merged);
+ }
+}
 export function buildSpeedwayVenue(track){
  const venue=new T.Group();venue.name='speedway-venue';const S=track.straight,R=track.radius,home=track.shortStraight/2+R,half=(track.banking?.width??24)/2,scale=Math.min(1,S/650),length=circuitLength(track);
- const mats={grass:material('#5d795e'),asphalt:material('#343d42'),apron:material('#495258'),white:material('#dddccf'),yellow:material('#efcc46'),wall:material('#d4d6cd'),concrete:material('#9caaa7'),steel:material('#586b72',{metalness:.55}),dark:material('#23303b')};
+ const mats={grass:material('#5d795e'),asphalt:material('#343d42'),apron:material('#495258'),white:material('#dddccf'),yellow:material('#efcc46'),wall:material('#d4d6cd'),concrete:material('#9caaa7'),steel:material('#586b72',{metalness:.55}),dark:material('#23303b'),seats:material('#7d4b43'),roof:material('#d8d3bb')};
  const floor=new T.Mesh(new T.PlaneGeometry(5000,5000),mats.grass);floor.rotation.x=-Math.PI/2;floor.position.y=-.05;floor.receiveShadow=true;venue.add(floor);
  ribbon(venue,track,-half,half,mats.asphalt);
  ribbon(venue,track,half,half+1.2,mats.asphalt);
@@ -40,13 +58,13 @@ export function buildSpeedwayVenue(track){
  box(venue,0,7,garageZ-44*scale-12,Math.max(32,S*.30),14,14*scale+5,mats.dark);box(venue,0,14.3,garageZ-44*scale-12,Math.max(34,S*.31),.5,15*scale+6,mats.concrete);textSign(venue,'STREAKCHAT MOTOR SPEEDWAY',0,10,garageZ-37*scale-9,Math.max(27,S*.27),3);
  const logo=textSign(venue,'S T R E A K C H A T',0,.09,-home*.10,Math.max(45,S*.45),Math.max(8,15*scale),'#5d795e','#d0d2b5');logo.rotation.x=-Math.PI/2;
  const grandLength=Math.max(100,S*.96),grandRows=track.banking?16:7,crowd=[];for(const side of[-1,1]){const z=side*(home+half+31),blocks=3,blockWidth=grandLength/blocks-5;
-  for(let block=0;block<blocks;block++){const x=(block-1)*grandLength/blocks;box(venue,x,2,z,blockWidth,4,12,mats.concrete);for(let row=0;row<grandRows;row++){const yy=4+row*.65,zz=z+side*row*1.55;box(venue,x,yy,zz,blockWidth,.38,1.5,row%3===0?material('#7d4b43'):mats.concrete);const people=Math.floor(blockWidth/2.0);for(let c=0;c<people;c++){const seed=c*29+row*19+block*13;crowd.push({position:[x-blockWidth/2+1+c*2,yy+.6,zz],color:['#d8c7a1','#b15f43','#344e77','#e1dfcd','#687952'][seed%5]});}}
-   const roofY=grandRows*.65+5.5,roofZ=z+side*(grandRows*.8+2);box(venue,x,roofY,roofZ,blockWidth+2,.35,grandRows*1.6,material('#d8d3bb'));for(const xx of[x-blockWidth*.45,x+blockWidth*.45])box(venue,xx,roofY/2,roofZ+side*5,.5,roofY,.5,mats.steel);
+  for(let block=0;block<blocks;block++){const x=(block-1)*grandLength/blocks;box(venue,x,2,z,blockWidth,4,12,mats.concrete);for(let row=0;row<grandRows;row++){const yy=4+row*.65,zz=z+side*row*1.55;box(venue,x,yy,zz,blockWidth,.38,1.5,row%3===0?mats.seats:mats.concrete);const people=Math.floor(blockWidth/2.0);for(let c=0;c<people;c++){const seed=c*29+row*19+block*13;crowd.push({position:[x-blockWidth/2+1+c*2,yy+.6,zz],color:['#d8c7a1','#b15f43','#344e77','#e1dfcd','#687952'][seed%5]});}}
+   const roofY=grandRows*.65+5.5,roofZ=z+side*(grandRows*.8+2);box(venue,x,roofY,roofZ,blockWidth+2,.35,grandRows*1.6,mats.roof);for(const xx of[x-blockWidth*.45,x+blockWidth*.45])box(venue,xx,roofY/2,roofZ+side*5,.5,roofY,.5,mats.steel);
   }
  }
  instances(venue,new T.BoxGeometry(.46,.66,.46),material('#cabda5'),crowd).castShadow=false;
  const towers=[];for(const x of[-S*.48,0,S*.48])for(const z of[-home-45,home+45]){box(venue,x,18,z,.7,36,.7,mats.steel);box(venue,x,35,z,11,2,.8,mats.concrete);for(let i=0;i<5;i++)towers.push({position:[x-4+i*2,35,z+(z>0?-1:1)*.5]});}instances(venue,new T.BoxGeometry(1.5,1.4,.2),mats.white,towers);
  const pylonX=S/2+R+30;box(venue,pylonX,14,0,1.5,28,1.5,mats.steel);box(venue,pylonX,28,0,10,20,3,mats.dark);textSign(venue,'LAP',pylonX,34,1.55,8,3);textSign(venue,'01',pylonX,27,1.55,8,7,'#20323b','#ffd07d');
  const trees=[],leaves=[];for(let i=0;i<100;i++){const x=Math.sin(i*7.13)*(S/2+R+180),z=Math.cos(i*6.3)*(home+220);if(Math.abs(x)<S/2+R+65&&Math.abs(z)<home+90)continue;trees.push({position:[x,4,z]});leaves.push({position:[x,10,z],color:i%2?'#345b48':'#3f654e'});}instances(venue,new T.BoxGeometry(1.1,8,1.1),material('#6b5943'),trees);instances(venue,new T.ConeGeometry(5,14,7),mats.grass,leaves);
- venue.userData.bounds={halfX:S/2+R+65,halfZ:home+90};return venue;
+ batchStructures(venue);venue.userData.bounds={halfX:S/2+R+65,halfZ:home+90};return venue;
 }

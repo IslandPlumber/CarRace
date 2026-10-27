@@ -67,5 +67,5 @@ sha256sum --check --strict "$backup/legacy-web.sha256"
 systemctl show nginx php8.0-fpm php8.1-fpm mysql cron horserace carrace -p Id -p MainPID -p ActiveState > "$backup/services.after"
 cmp "$backup/services.before" "$backup/services.after"
 trap - ERR
-echo "CarRace models published. No service restarted, hosting configuration changed, or database touched."
+echo "CarRace presentation published. No service restarted, hosting configuration changed, or database touched."
 echo "Rollback HTML: $backup/index.html.before"

@@ -68,3 +68,11 @@ The regression suite passed, along with six focused speedway checks and a two-pl
 Live multiplayer verification completed at **2026-10-27 13:26:57 UTC**. Both players shared the frozen speedway course, bought/saved an engine upgrade, placed Win/Show bets, and each used their paid ability once. The Show ticket paid 75 coins on a 50-coin stake for second place. Finish prizes, points, final balances, reload and saved bet history matched expectations. Test players left the private room afterward. No browser errors or requests outside `/carrace/` occurred.
 
 Verified race: `540704cb-6371-479c-b119-d17acefadd9e`. Local evidence is in ignored `review/speedway/` and `review/live/`. Refresh existing browser tabs to load the larger course renderer.
+
+## Playback smoothing — October 27, 2026
+
+Prepared browser-only update: confirmed race history plays on a monotonic clock with an adaptive 1.8–4 second buffer and bounded speed corrections. Late/out-of-order snapshots cannot seek the field. The final confirmed snapshot plays through the buffered finish. Account and room polling run concurrently; room discovery refreshes on the club screen. Finish crossings are cached per snapshot. Stationary venue structures share drawing batches while preserving geometry, materials and shadow flags.
+
+Validation: 95 automated checks passed; the desktop/mobile two-player browser flow passed, including upgrades, Win/Show tickets, paid abilities, saved history and settlement. The banked speedway visual check reached 24° with no browser errors. A browser test with account responses delayed 450 ms and room responses varying from 100–800 ms recorded 1,168 moving frames across 34 room packets, zero stalls, no rewinds and no forward jumps. A simulated slower CPU comparison improved overview median frame spacing from 36 ms to 18 ms on this machine; these measurements are device-specific.
+
+The updater is staged for a static-only publication. Live verification is pending the administrator step. It will verify protected hashes and all application PIDs and will not restart services or update any server/database files.
