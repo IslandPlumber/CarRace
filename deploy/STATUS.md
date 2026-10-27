@@ -42,3 +42,13 @@ Live race ID: `b57c6549-dc7c-4d9c-a9b3-d31a147860f7`. No browser errors, mobile 
 Local evidence, excluded from Git: `review/unit-tests.log`, `review/browser-report.json`, `review/live/report.json`, screenshots under `review/live/`, and `review/deployment-after.log`.
 
 The initial installer should **not** be rerun on this installed server. Preserve `/home/carrace/data` during future releases. Daily/off-server database backups and password reset are not configured in this version.
+
+## Stock-car model upgrade — October 27, 2026
+
+Published the visual assets from revision `be1851a`: a refined CC0 Stock Camry NS base by WiyantoID, seven original liveries and rendered thumbnails, distance-driven wheel animation, reflective paint, and the interactive Garage showroom. Source and license are retained in `assets/`; the runtime model is 582,992 bytes and 10,356 triangles, downloaded once for all seven cars and the showroom.
+
+This update copied static assets and hashed JavaScript/CSS into the existing CarRace site and atomically replaced its HTML. It did not replace backend files, touch the database, alter Nginx, or restart any service. The original `app.js` and `style.css` remain available for already-open tabs. Presentation rollback: `/var/backups/carrace-visuals-20261027-xaMSJX/index.html.before`.
+
+All 85 automated checks passed, as did the two-player local browser regression. Live HTTPS model checks passed all seven showroom liveries, one shared model download, selection of a showroom car for the race, the new models in the Chase view, and the phone showroom without overflow or browser errors. The served GLB matched SHA256 `8b3d1604116dc2060ed510e996a459276b2d57e763036dd2af40c702a399ab80`.
+
+CarRace PID remained `3488171` with zero automatic restarts. HorseRace and Laravel service PIDs remained unchanged. Protected environment/configuration hashes matched, Laravel pages returned their previous expected status codes, and both game health endpoints returned 200. Model verification evidence is in ignored `review/models/`.
