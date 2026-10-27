@@ -2,6 +2,8 @@ import * as T from 'three';
 import {makeCircuit,trackPoint,circuitLength} from './track.js';
 import {RACERS,racerById} from './roster.js';
 import {activePowerEffects,hitReaction} from './powers.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {loadCarModel,createStockCar,rollWheels} from './car-model.js';
 
 function texture(draw,w=512,h=256){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;return t;}
 const mat=(color,extra={})=>new T.MeshStandardMaterial({color,roughness:.68,...extra});
@@ -46,7 +48,9 @@ export class SpeedwayScene{
   this.renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFSoftShadowMap;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.05;this.renderer.outputColorSpace=T.SRGBColorSpace;
   this.camera=new T.PerspectiveCamera(44,1,.1,700);this.camera.position.set(115,137,151);this.camera.lookAt(0,0,0);
   this.scene.add(new T.HemisphereLight('#d9ecff','#617050',2.6));const sun=new T.DirectionalLight('#fff2d3',3.5);sun.position.set(-70,130,70);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-120,right:120,top:110,bottom:-110,near:1,far:330});sun.shadow.bias=-.0003;sun.shadow.normalBias=.12;this.scene.add(sun);
+  const environment=new RoomEnvironment(),generator=new T.PMREMGenerator(this.renderer);this.scene.environment=generator.fromScene(environment,.04).texture;this.scene.environmentIntensity=.25;environment.dispose();generator.dispose();
   this.buildVenue();this.cars=new Map(RACERS.map(r=>{const car=makeStockCar(r);this.scene.add(car);return[r.id,car];}));
+  this.ready=loadCarModel().then(template=>{for(const r of RACERS){const previous=this.cars.get(r.id),car=createStockCar(template,r);this.scene.remove(previous);const geometries=new Set(),materials=new Set(),textures=new Set();previous.traverse(o=>{if(o.isMesh){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){materials.add(m);if(m.map)textures.add(m.map);}}});for(const t of textures)t.dispose();for(const m of materials)m.dispose();for(const g of geometries)g.dispose();this.scene.add(car);this.cars.set(r.id,car);}this.canvas.dataset.carModels='ready';return true;});
   this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(canvas.parentElement);this.resize();this.target=new T.Vector3();this.cameraGoal=new T.Vector3();this.lastNow=0;
  }
  resize(){const {width,height}=this.canvas.parentElement.getBoundingClientRect();this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();}
@@ -82,7 +86,7 @@ export class SpeedwayScene{
  }
  draw(state,race,time,now){
   const dt=this.lastNow?Math.min(.08,(now-this.lastNow)/1000):.016;this.lastNow=now;
-  for(const runner of state.runners){const car=this.cars.get(runner.id);if(!car)continue;car.visible=true;const impact=race?hitReaction(race,runner.id,time):{roll:0,lift:0};car.position.set(runner.x,.05+impact.lift,runner.z);car.rotation.set(impact.roll,-runner.heading,0);const effects=race?activePowerEffects(race,runner.id,time):[];const boost=effects.some(e=>e.kind==='boost'||e.kind==='assist'),slow=effects.some(e=>e.kind==='slow');car.userData.glow.material.opacity=boost?.65:slow?.27:runner.id===this.selected?.2:0;car.userData.glow.material.color.set(slow?'#ff664c':racerById(runner.id).accent);car.userData.exhaust.material.opacity=boost?.85:0;car.userData.exhaust.scale.y=1+Math.sin(now*.04)*.18;}
+  for(const runner of state.runners){const car=this.cars.get(runner.id);if(!car)continue;car.visible=true;rollWheels(car,runner.distance);const impact=race?hitReaction(race,runner.id,time):{roll:0,lift:0};car.position.set(runner.x,.05+impact.lift,runner.z);car.rotation.set(impact.roll,-runner.heading,0);const effects=race?activePowerEffects(race,runner.id,time):[];const boost=effects.some(e=>e.kind==='boost'||e.kind==='assist'),slow=effects.some(e=>e.kind==='slow');car.userData.glow.material.opacity=boost?.65:slow?.27:runner.id===this.selected?.2:0;car.userData.glow.material.color.set(slow?'#ff664c':racerById(runner.id).accent);car.userData.exhaust.material.opacity=boost?.85:0;car.userData.exhaust.scale.y=1+Math.sin(now*.04)*.18;}
   const selected=state.runners.find(r=>r.id===this.selected)??state.runners[0];
   if(this.cameraMode==='chase'&&selected){this.cameraGoal.set(selected.x-Math.cos(selected.heading)*13,8,selected.z-Math.sin(selected.heading)*13);this.target.set(selected.x+Math.cos(selected.heading)*9,1,selected.z+Math.sin(selected.heading)*9);}
   else if(this.cameraMode==='trackside'&&selected){this.cameraGoal.set(100,10,65);this.target.set(selected.x,1,selected.z);}

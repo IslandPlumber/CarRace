@@ -21,7 +21,11 @@ A standalone stock-car racing club live at **[streakchat.app/carrace/](https://s
 | Rowdy Candy | Sugar Rush · 18 | Sugar Rush: a big straight-line burst |
 | Ricky Crown | Royal Blue · 43 | King's Command: slow the leader |
 
-The cars, team logos, graphics and engine audio are original procedural assets. No driver photographs, real voices, sponsor logos, or imported car models. The game is an independent parody, unaffiliated with NASCAR. Inspiration reference: [NASCAR's 75 Greatest Drivers](https://www.nascar.com/nascar75-greatest-drivers-timeline/).
+The stock-car base is **[Stock Camry NS by WiyantoID](https://wiyantoid.itch.io/stock-camry-ns)**, released under **CC0**. The original source and license are retained, with our refined runtime mesh, fictional liveries, numbers, materials, and rendered preview images. See [model credits](assets/CREDITS.md). The team graphics and synthesized engine audio are original. No driver photographs, real voices, or official team sponsor artwork are included. The game is an independent parody, unaffiliated with NASCAR. Inspiration reference: [NASCAR's 75 Greatest Drivers](https://www.nascar.com/nascar75-greatest-drivers-timeline/).
+
+The **Garage showroom** lets you rotate and zoom each car and select it for racing. The runtime model has 10,356 triangles and is shared by all seven cars through one 582,992-byte download. Wheels turn from actual race distance; the visuals cannot change race results.
+
+`tools/prepare-car.py` refines the retained source in Blender 5.2 with small body-edge bevels and weighted panel normals. `tools/render-car-thumbnails.mjs` renders the seven previews from the local Garage. `npm run test:models` checks the showroom, car selection, shared download, racing view, phone layout, and browser errors against the local running game.
 
 ## Run locally
 
@@ -47,6 +51,8 @@ Browser tests use installed Chrome and exercise a prefix-rejecting proxy at `/ca
 ## Deployment
 
 The administrator installer in `deploy/install-carrace.sh` is prepared for the inspected Ubuntu/Nginx host. It refuses to proceed if the existing hosting file or Laravel environment hash has changed, if `/carrace/` is already configured, or if port 8771 is occupied. This is an **initial-install script**, not an update script.
+
+**Visual-only updates:** run `npm run build`, then `node package-visuals.mjs`. Upload `review/visuals-deploy/` to `/home/john/carrace-visuals/` and run `sudo bash /home/john/carrace-visuals/update-visuals.sh`. The script copies licensed assets and immutable hashed JavaScript/CSS, then atomically replaces only CarRace's HTML entry point. It preserves old scripts/styles for already-open tabs and does not restart any service, change hosting configuration, modify the backend, or touch player data. It verifies protected hashes and all existing service PIDs before/after. The recorded HTML backup is sufficient to restore the previous presentation.
 
 1. Build and test. Commit the intended source.
 2. Run `node package-release.mjs` to create the production-only archive and checksums under `review/deploy/`.

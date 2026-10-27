@@ -1,6 +1,12 @@
 import {build} from 'esbuild';
-import {mkdir,copyFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,copyFile,cp} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 await mkdir('site',{recursive:true});
-await build({entryPoints:['app.js'],outfile:'site/app.js',bundle:true,minify:true,format:'esm',target:'es2022'});
-await Promise.all(['index.html','style.css','favicon.svg'].map(f=>copyFile(`public/${f}`,`site/${f}`)));
-console.log('CarRace built in site/');
+const bundled=await build({entryPoints:['app.js'],outfile:'app.js',bundle:true,minify:true,format:'esm',target:'es2022',write:false});
+const js=bundled.outputFiles[0].contents,css=await readFile('public/style.css');
+const hash=b=>createHash('sha256').update(b).digest('hex').slice(0,12),appName=`app-${hash(js)}.js`,styleName=`style-${hash(css)}.css`;
+await Promise.all([writeFile(`site/${appName}`,js),writeFile(`site/${styleName}`,css),copyFile('public/favicon.svg','site/favicon.svg')]);
+const html=(await readFile('public/index.html','utf8')).replace(/\.\/app\.js\?v=[^"']+/,`./${appName}`).replace(/\.\/style\.css\?v=[^"']+/,`./${styleName}`);
+await writeFile('site/index.html',html);
+await cp('assets','site/assets',{recursive:true});
+console.log(`CarRace built: ${appName}, ${styleName}`);

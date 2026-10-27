@@ -10,6 +10,5 @@ export const RACERS = Object.freeze([
 ].map(r=>Object.freeze({...r,power:POWERS[r.id]})));
 export const racerById = id => RACERS.find(r=>r.id===id) ?? RACERS[0];
 export function carArt(r) {
- const rainbow=r.id==='prism'?'<path d="M57 62L109 43H177L148 62Z" fill="#ed515b"/><path d="M57 68L116 48H177L148 68Z" fill="#ffc841"/><path d="M57 74L116 54H177L148 74Z" fill="#50c995"/>':'';
- return `<svg viewBox="0 0 260 125" aria-hidden="true"><ellipse cx="131" cy="106" rx="99" ry="10" fill="#000" opacity=".25"/><path d="M28 72L63 61L91 36L153 32L188 58L229 68L242 87L229 99H26L17 87Z" fill="${r.color}"/><path d="M80 59L98 39H146L171 59Z" fill="#101c27"/><path d="M120 39V59" stroke="${r.stripe}" stroke-width="4"/><path d="M28 73H228L233 81H23Z" fill="${r.stripe}" opacity=".9"/>${rainbow}<path d="M23 86H238V96H23Z" fill="#111921" opacity=".35"/><path d="M196 56H236V62H193Z" fill="#161a21"/><circle cx="65" cy="95" r="18" fill="#101217" stroke="#45454a" stroke-width="3"/><circle cx="65" cy="95" r="8" fill="#85888e"/><circle cx="200" cy="95" r="18" fill="#101217" stroke="#45454a" stroke-width="3"/><circle cx="200" cy="95" r="8" fill="#85888e"/><text x="131" y="90" text-anchor="middle" fill="#fff7d8" stroke="#14171d" stroke-width="1" paint-order="stroke" font-size="32" font-family="Arial" font-weight="900" font-style="italic">${r.number}</text><path d="M24 76H42V81H24Z" fill="#f5f1cd"/></svg>`;
+ return `<img src="./assets/cars/previews/${r.id}.png" alt="" loading="lazy" decoding="async" aria-hidden="true">`;
 }

@@ -3,14 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.13.0" },
+  "engines": {
+    "node": ">=24.13.0"
+  },
   "scripts": {
     "dev": "node server/start.js",
     "start": "node server/start.js",
     "build": "node build.mjs",
-    "test": "node --test race-core.test.js track.test.js server/game.test.js server/betting.test.js server/live-simulation.test.js server/live-powers.test.js server/special-powers.test.js server/main-room.test.js server/presence.test.js server/workshop.test.js tests/car-race.test.js",
-    "test:browser": "node tests/browser.mjs"
+    "test": "node --test race-core.test.js track.test.js server/game.test.js server/betting.test.js server/live-simulation.test.js server/live-powers.test.js server/special-powers.test.js server/main-room.test.js server/presence.test.js server/workshop.test.js tests/car-race.test.js tests/model-asset.test.js",
+    "test:browser": "node tests/browser.mjs",
+    "test:models": "node tests/models.mjs"
   },
-  "dependencies": { "three": "0.180.0" },
-  "devDependencies": { "esbuild": "0.25.11", "@playwright/test": "1.56.1" }
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.11",
+    "@playwright/test": "1.56.1"
+  }
 }
