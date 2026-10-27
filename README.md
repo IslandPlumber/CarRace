@@ -1,6 +1,6 @@
 # CarRace — StreakChat Speedway
 
-A standalone stock-car racing club at **`/carrace/`**, built from the HorseRace game engine. Seven fictional drivers race original numbered stock cars with signature abilities. The cast takes its cues from classic stock-car liveries and personalities, including the black No. 03, red No. 88, rainbow No. 24, orange No. 20, cobalt No. 48, candy-green No. 18, and royal-blue No. 43.
+A standalone stock-car racing club live at **[streakchat.app/carrace/](https://streakchat.app/carrace/)**, built from the HorseRace game engine. Seven fictional drivers race original numbered stock cars with signature abilities. The cast takes its cues from classic stock-car liveries and personalities, including the black No. 03, red No. 88, rainbow No. 24, orange No. 20, cobalt No. 48, candy-green No. 18, and royal-blue No. 43.
 
 ## Play
 
@@ -41,6 +41,8 @@ npm run test:browser
 ```
 
 Browser tests use installed Chrome and exercise a prefix-rejecting proxy at `/carrace/`, two independent desktop/mobile sessions, upgrades, bets, synchronized races, paid abilities, exactly-once settlement, account persistence after reopening SQLite, and phone layouts. Temporary browser accounts and databases are local fixtures, never copied to production. Screenshots and reports are in ignored `review/`.
+
+`node tests/live.mjs` is a separate live-site verification. It creates two verification accounts with free coins, uses a private room, follows a complete race on the real server clock, verifies fees and payouts, and leaves the room afterward. It retains those accounts and their legitimate race history. See [deployment status](deploy/STATUS.md) for the verified release.
 
 ## Deployment
 
