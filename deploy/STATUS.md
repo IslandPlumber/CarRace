@@ -1,8 +1,11 @@
 # Verified CarRace deployment — October 27, 2026
 
-**Live URL:** https://streakchat.app/carrace/  
-**Production application revision:** `06764f5a0f121df6439469bb8e4b10b3e7b389e4`  
-**Repository:** https://github.com/IslandPlumber/CarRace  
+**Live URL:** https://streakchat.app/carrace/
+
+**Production application revision:** `06764f5a0f121df6439469bb8e4b10b3e7b389e4`
+
+**Repository:** https://github.com/IslandPlumber/CarRace
+
 **Administrator backup:** `/var/backups/carrace-deploy-20261027-XeDvxW`
 
 ## Isolation
