@@ -57,6 +57,11 @@ export function validateRace(race) {
     insist(finite(t.startOffset)&&t.startOffset>=0&&t.startOffset<t.straight,'invalid starting gate offset');
     insist(Math.abs(t.length-circuitLength(t)*t.laps)<.01,'circuit length must match its geometry');
     insist(t.radius > race.cast?.length*t.laneWidth/2+3,'circuit radius too small for field width');
+    if(t.banking){const b=t.banking;
+      insist([b.turnDegrees,b.straightDegrees,b.transition,b.width,b.apron].every(finite),'banking values must be finite');
+      insist(b.turnDegrees>=0&&b.turnDegrees<=40&&b.straightDegrees>=0&&b.straightDegrees<=b.turnDegrees,'invalid banking angle');
+      insist(b.transition>0&&b.transition<=t.straight/2&&b.width>=race.cast.length*t.laneWidth&&b.width<t.radius&&b.apron>0,'invalid banked road dimensions');
+    }
   }
   insist(race.startDelay===undefined || (finite(race.startDelay)&&race.startDelay>=0&&race.startDelay<race.duration),'invalid gate delay');
   insist(finite(race.track.length) && race.track.length > 0, "track.length must be positive");

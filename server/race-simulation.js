@@ -285,7 +285,7 @@ export function simulateRace(seed, { entrants, duration = 64, title = "Club race
  * The complete projection is private server state. Only publicLiveRace may be
  * sent to players while a race is underway.
  */
-export function simulateLiveRace(seed, { entrants, duration = 64, title = "Club race", activations = [], specials = false } = {}) {
+export function simulateLiveRace(seed, { entrants, duration = 64, title = "Club race", activations = [], specials = false, track:trackInput } = {}) {
   if (!(typeof seed === "string" || typeof seed === "number" && Number.isFinite(seed)))
     throw Error("Race seed must be a string or finite number.");
   if (!Array.isArray(entrants) || !entrants.length || entrants.length > ACTOR_IDS.length ||
@@ -295,7 +295,7 @@ export function simulateLiveRace(seed, { entrants, duration = 64, title = "Club 
   if (!Number.isFinite(duration) || duration < 2 || duration > 120)
     throw Error("Race duration must be between 2 and 120 seconds.");
   if (!Array.isArray(activations)) throw Error("Live activations must be an array.");
-  const track = makeCircuit(), startDelay = Math.min(7, duration * .14);
+  const track = trackInput?structuredClone(trackInput):makeCircuit(), startDelay = Math.min(7, duration * .14);
   const scale = (duration - startDelay) / WINDOW;
   const tail = Math.min(1.25, duration * .02);
   // The generous fixed horizon accommodates even repeated heavy hits without

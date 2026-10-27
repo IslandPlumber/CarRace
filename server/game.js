@@ -11,6 +11,7 @@ import { simulateRace, simulateLiveRace, publicLiveRace, nextLiveActivationTime,
 import { BET_TYPES, ticketReturn } from "../betting.js";
 import {UPGRADES,upgradeCost,finishPrize} from '../progression.js';
 import {SPECIAL_POWER_POLICY,specialPowerCost,SPECIAL_POWERS} from '../powers.js';
+import {makeCircuit} from '../track.js';
 export const RULES = {
   startingCoins: 1000,
   prizes: [200, 140, 100, 75, 50, 35, 25],
@@ -37,12 +38,13 @@ const hashToken = (t) => createHash("sha256").update(t).digest("hex");
 export class Game {
   constructor(
     file,
-    { clock = Date.now, bettingMs = 30000, duration = 64, specials = true } = {},
+    { clock = Date.now, bettingMs = 30000, duration = 64, specials = true, track = null } = {},
   ) {
     this.clock = clock;
     this.bettingMs = bettingMs;
     this.duration = duration;
     this.specials = specials;
+    this.track = track?structuredClone(track):null;
     this.presence = new Map();
     this.startedAt = this.clock();
     this.db = new DatabaseSync(file);
@@ -59,6 +61,7 @@ export class Game {
    CREATE TABLE IF NOT EXISTS ledger(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), delta INTEGER NOT NULL, reason TEXT NOT NULL, race_id TEXT, created INTEGER NOT NULL);
    CREATE TABLE IF NOT EXISTS race_bets(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), race_id TEXT NOT NULL REFERENCES races(id), car TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('win','place','show')), stake INTEGER NOT NULL CHECK(typeof(stake)='integer' AND stake BETWEEN 10 AND 500), return_units INTEGER NOT NULL CHECK(return_units>=100), payout INTEGER CHECK(payout IS NULL OR (typeof(payout)='integer' AND payout>=0)), UNIQUE(user_id,race_id,kind));
    CREATE TABLE IF NOT EXISTS live_races(race_id TEXT PRIMARY KEY REFERENCES races(id),seed TEXT NOT NULL,duration REAL NOT NULL,revision INTEGER NOT NULL DEFAULT 0);
+   CREATE TABLE IF NOT EXISTS race_tracks(race_id TEXT PRIMARY KEY REFERENCES races(id),definition TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS race_power_uses(request_id TEXT PRIMARY KEY,race_id TEXT NOT NULL REFERENCES races(id),user_id TEXT NOT NULL REFERENCES users(id),actor TEXT NOT NULL,time REAL NOT NULL,charge INTEGER NOT NULL,created INTEGER NOT NULL,UNIQUE(race_id,user_id,charge));
    CREATE TABLE IF NOT EXISTS race_power_rules(race_id TEXT PRIMARY KEY REFERENCES races(id),rules TEXT NOT NULL);`);
   }
@@ -460,6 +463,7 @@ export class Game {
       // New rounds opt into live controls explicitly. Older in-flight rounds
       // retain their original engine and saved outcome across this migration.
       this.run("INSERT INTO live_races(race_id,seed,duration) VALUES(?,?,?)",raceId,randomBytes(16).toString("hex"),this.duration);
+      if(this.track)this.run('INSERT INTO race_tracks VALUES(?,?)',raceId,JSON.stringify(this.track));
       if(this.specials)this.run('INSERT INTO race_power_rules VALUES(?,?)',raceId,JSON.stringify({...SPECIAL_POWER_POLICY,costs:Object.fromEntries(entrants.filter(e=>e.userId).map(e=>[e.car,specialPowerCost(e.upgrades)]))}));
       return raceId;
     });
@@ -515,12 +519,14 @@ export class Game {
   }
   prepare(r) {
     const live=this.one("SELECT * FROM live_races WHERE race_id=?",r.id);
+    const frozenTrack=this.one('SELECT definition FROM race_tracks WHERE race_id=?',r.id);
     const def = (live?simulateLiveRace:simulateRace)(live?.seed??randomBytes(16).toString("hex"), {
       entrants: JSON.parse(r.entrants),
       duration: live?.duration??(r.ends - r.starts) / 1000,
       title: `Room ${r.code} · Race ${r.number}`,
       ...(live?{activations:[]}:{}),
       specials:Boolean(this.powerRules(r.id)),
+      ...(frozenTrack?{track:JSON.parse(frozenTrack.definition)}:{}),
     });
     def.id = r.id;
     this.run(
@@ -582,7 +588,7 @@ export class Game {
       const time=nextLiveActivationTime(def,(this.clock()-r.starts)/1000);
       const uses=this.powerUses(r.id),charge=state.used+1;
       const next=simulateLiveRace(live.seed,{
-        entrants:JSON.parse(r.entrants),duration:live.duration,title:def.title,
+        entrants:JSON.parse(r.entrants),duration:live.duration,title:def.title,track:def.track,
         activations:[...uses.map(use=>({actor:use.actor,time:use.time})),{actor:state.actor,time}],specials:Boolean(this.powerRules(r.id)),
       });
       next.id=r.id;
@@ -673,6 +679,7 @@ export class Game {
             starts: r.starts,
             ends: live&&definition&&r.phase!=="results"?r.starts+definition.duration*1000:r.ends,
             entrants: JSON.parse(r.entrants),
+            track:definition?.track??JSON.parse(this.one('SELECT definition FROM race_tracks WHERE race_id=?',r.id)?.definition??'null')??makeCircuit(),
             definition: r.phase === "betting" ? null : publicDefinition,
             revision:live?.revision??0,
             power:this.powerStatus(id,r,definition,live),

@@ -11,6 +11,8 @@ A standalone stock-car racing club live at **[streakchat.app/carrace/](https://s
 - **Garage:** persistent engine, handling, chassis, team, and power upgrades. Finishing prizes and points are awarded once. No purchases or cash-out.
 - **Cameras:** Overview, Chase, Trackside. Optional synthesized engine sound.
 
+The new **1.52-mile speedway** is approximately six times the original lap length. It has 24° turns, 4° straights, smooth banking transitions, a flat apron, double yellow lines, pit road, grandstands, retaining walls, and catch fencing. Cars follow the road surface in height, pitch, and roll. New club rounds freeze the course when betting opens; older pending and in-flight rounds retain their original circuit through a server upgrade.
+
 | Fictional driver | Stock car | Signature move |
 |---|---|---|
 | Duke Ironhart | Midnight Thunder · 03 | Bump & Run: boost and disrupt nearby rivals |
@@ -48,11 +50,15 @@ Browser tests use installed Chrome and exercise a prefix-rejecting proxy at `/ca
 
 `node tests/live.mjs` is a separate live-site verification. It creates two verification accounts with free coins, uses a private room, follows a complete race on the real server clock, verifies fees and payouts, and leaves the room afterward. It retains those accounts and their legitimate race history. See [deployment status](deploy/STATUS.md) for the verified release.
 
+`node tests/speedway-browser.mjs` checks the enlarged course and a 24° corner during practice, including Chase, Trackside, and mobile views. `tests/speedway.test.js` covers continuous road frames, banking validation, causal race inputs, and legacy/pending race compatibility.
+
 ## Deployment
 
 The administrator installer in `deploy/install-carrace.sh` is prepared for the inspected Ubuntu/Nginx host. It refuses to proceed if the existing hosting file or Laravel environment hash has changed, if `/carrace/` is already configured, or if port 8771 is occupied. This is an **initial-install script**, not an update script.
 
 **Visual-only updates:** run `npm run build`, then `node package-visuals.mjs`. Upload `review/visuals-deploy/` to `/home/john/carrace-visuals/` and run `sudo bash /home/john/carrace-visuals/update-visuals.sh`. The script copies licensed assets and immutable hashed JavaScript/CSS, then atomically replaces only CarRace's HTML entry point. It preserves old scripts/styles for already-open tabs and does not restart any service, change hosting configuration, modify the backend, or touch player data. It verifies protected hashes and all existing service PIDs before/after. The recorded HTML backup is sufficient to restore the previous presentation.
+
+**Speedway backend update:** after a build and commit, `node package-speedway.mjs` prepares the release. Upload `review/speedway-deploy/` to `/home/john/carrace-speedway/` and run `sudo bash /home/john/carrace-speedway/update-speedway.sh`. This creates a private online SQLite backup, preflights the new server against a private copy on loopback port 8772, selects the new application release, and restarts only `carrace.service`. It adds the `race_tracks` table without rewriting existing accounts or race records. Hosting, Laravel, HorseRace, and schedules stay unchanged. Refresh existing browser tabs for the new speedway view.
 
 1. Build and test. Commit the intended source.
 2. Run `node package-release.mjs` to create the production-only archive and checksums under `review/deploy/`.

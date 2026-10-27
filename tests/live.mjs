@@ -15,12 +15,12 @@ try{
  await register(q,nameB,'Rowdy Candy');const joined=await api(q,`/rooms/${code}/join`,{car:'candy'});assert.equal(joined.status,200);
  assert.equal((await api(p,`/rooms/${code}/start`,{})).status,200);
  for(const[page,car,kind,stake]of[[p,'ironhart','win',25],[q,'candy','show',50]])assert.equal((await api(page,`/rooms/${code}/bets`,{car,kind,stake})).status,200);
- const before=(await api(p,`/rooms/${code}`)).data.room;assert.equal(before.race.phase,'betting');assert.equal(before.race.definition,null);console.log('LIVE: two players registered; upgrade saved; private room joined; Win/Show bets placed. Waiting for the real server clock.');
+ const before=(await api(p,`/rooms/${code}`)).data.room;assert.equal(before.race.phase,'betting');assert.equal(before.race.definition,null);assert.equal(before.race.track.profile,'speedway-v1');assert.ok(before.race.track.length>2400);console.log('LIVE: two players registered; upgrade saved; private speedway room joined; Win/Show bets placed. Waiting for the real server clock.');
  for(const page of[p,q])await page.getByRole('button',{name:'The circuit',exact:true}).click();
  await p.locator('#ability:not([disabled])').waitFor({timeout:55000});await q.locator('#ability:not([disabled])').waitFor({timeout:10000});
  await p.locator('#ability').click();await q.locator('#ability').click();await p.waitForTimeout(1200);
  const ar=(await api(p,`/rooms/${code}`)).data.room,br=(await api(q,`/rooms/${code}`)).data.room;
- assert.equal(ar.race.id,br.race.id);assert.equal(ar.race.power.used,1);assert.equal(br.race.power.used,1);assert.equal(ar.race.definition.seed,'live');assert.deepEqual(ar.race.definition.outcome,[]);
+ assert.equal(ar.race.id,br.race.id);assert.equal(ar.race.power.used,1);assert.equal(br.race.power.used,1);assert.equal(ar.race.definition.seed,'live');assert.deepEqual(ar.race.definition.outcome,[]);assert.deepEqual(ar.race.definition.track,before.race.track);
  assert.equal((await api(p,'/me')).data.user.coins,810);assert.equal((await api(q,'/me')).data.user.coins,875);
  await p.getByRole('button',{name:'Chase',exact:true}).click();await p.waitForTimeout(1200);await p.screenshot({path:'review/live/desktop-racing.png',fullPage:true});await q.screenshot({path:'review/live/mobile-racing.png',fullPage:true});console.log('LIVE: both signature abilities applied once, fees correct, shared official race verified.');
  let result;for(let i=0;i<110;i++){result=(await api(p,`/rooms/${code}`)).data.room;if(result.race.phase==='results')break;await p.waitForTimeout(1000);}assert.equal(result.race.phase,'results');

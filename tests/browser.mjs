@@ -5,10 +5,11 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import {Game} from '../server/game.js';
+import {makeSpeedway} from '../track.js';
 import {createServer} from '../server/http.js';
 import {raceFinishedAt} from '../server/race-simulation.js';
 const dir=mkdtempSync(path.join(tmpdir(),'carrace-browser-'));mkdirSync('review',{recursive:true});
-let now=Date.now();const game=new Game(path.join(dir,'browser.sqlite'),{clock:()=>now,bettingMs:30000});
+let now=Date.now();const game=new Game(path.join(dir,'browser.sqlite'),{clock:()=>now,bettingMs:30000,track:makeSpeedway()});
 const backend=createServer(game,{site:path.resolve('site')});await new Promise(r=>backend.listen(0,'127.0.0.1',r));
 // Reject root requests. This exercises the exact /carrace/ prefix used in production.
 const proxy=http.createServer((req,res)=>{if(!req.url.startsWith('/carrace/')){res.writeHead(404);res.end('outside CarRace');return;}const upstream=http.request({hostname:'127.0.0.1',port:backend.address().port,path:req.url.slice('/carrace'.length),method:req.method,headers:req.headers},u=>{res.writeHead(u.statusCode,u.headers);u.pipe(res);});req.pipe(upstream);});await new Promise(r=>proxy.listen(0,'127.0.0.1',r));
